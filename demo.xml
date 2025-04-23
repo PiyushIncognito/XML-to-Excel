@@ -1,0 +1,53 @@
+import xml.etree.ElementTree as ET
+import pandas as pd
+
+# Load XML content from file
+with open('XML\data.xml', 'r', encoding='utf-8') as file:
+    xml_data = file.read()
+
+# Ensure there's a root element for multiple bookstores
+wrapped_xml = f"<root>{xml_data}</root>"
+root = ET.fromstring(wrapped_xml)
+
+# Tags to extract
+tags = ['title', 'firstName', 'lastName', 'code', 'noS']
+data_by_tag = {tag: [] for tag in tags}
+
+# List to hold each bookstore's data as a column
+bookstore_columns = []
+
+# Loop through each bookstore
+for idx, bookstore in enumerate(root.findall('bookstore'), start=1):
+    col_data = {tag: [] for tag in tags}
+
+    # Extract book info
+    for book in bookstore.findall('book'):
+        if (title := book.find('title')) is not None:
+            col_data['title'].append(title.text)
+        if (author := book.find('author')) is not None:
+            if (first := author.find('firstName')) is not None:
+                col_data['firstName'].append(first.text)
+            if (last := author.find('lastName')) is not None:
+                col_data['lastName'].append(last.text)
+
+    # Extract class info
+    for cls in bookstore.findall('./cabin/class'):
+        if (code := cls.find('code')) is not None:
+            col_data['code'].append(code.text)
+        if (noS := cls.find('noS')) is not None:
+            col_data['noS'].append(noS.text)
+
+    # Convert lists to comma-separated strings
+    for tag in tags:
+        data_by_tag[tag].append(', '.join(col_data[tag]))
+
+    bookstore_columns.append(f'Bookstore {idx}')
+
+# Create final DataFrame
+df = pd.DataFrame({'Tag': tags})
+for i, col in enumerate(bookstore_columns):
+    df[col] = [data_by_tag[tag][i] for tag in tags]
+
+# Export to Excel
+df.to_excel('XML\multi_bookstore_output.xlsx', index=False)
+print("✅ Excel file 'multi_bookstore_output.xlsx' created successfully.")
